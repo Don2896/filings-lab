@@ -30,12 +30,14 @@ def get_10k_filings(cik: str, n: int = 2) -> list[dict]:
     Hint: filings['recent'] holds parallel lists (form, accessionNumber,
     filingDate, primaryDocument); zip them and filter where form == '10-K'."""
     ten_k_filings = []
-    filings = requests.get(f"https://data.sec.gov/submissions/CIK{cik}.json").json()
+    url = f"https://data.sec.gov/submissions/CIK{cik}.json"
+    filings = fetch_json(url)
+    recent = filings['filings']['recent']
     for form, accession_number, filing_date, primary_document in zip(
-        filings["filings"]["recent"]["form"],
-        filings["filings"]["recent"]["accessionNumber"],
-        filings["filings"]["recent"]["filingDate"],
-        filings["filings"]["recent"]["primaryDocument"],
+        recent["form"],
+        recent["accessionNumber"],
+        recent["filingDate"],
+        recent["primaryDocument"]
     ):
         if form == "10-K":
             ten_k_filings.append(
@@ -85,3 +87,4 @@ def extract_risk_factors(html_path: Path) -> str:
         raise ValueError(f"Could not find Item 1A in {html_path}")
     return text[start_index:end_index].strip()
 
+print(get_10k_filings(get_cik("AAPL")))
