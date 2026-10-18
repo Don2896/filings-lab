@@ -11,6 +11,18 @@ def fetch_json(url):
     response.raise_for_status()
     return response.json()
 
+def save_text(ticker, filing, url) -> Path:
+    html_path = Path(f"data/raw/{ticker}/{filing['filing_date']}.html")
+    if not html_path.exists():
+        html_path.parent.mkdir(parents=True, exist_ok=True)
+        response = requests.get(url, headers=HEADERS)
+        response.raise_for_status()
+        html_path.write_text(response.text, encoding="utf-8")
+        print(f'downloaded to {html_path}')
+    else:
+        print(f'already saved to {html_path}')
+    return html_path
+
 def get_cik(ticker: str) -> str:
     """Return the 10-digit zero-padded CIK for a ticker, e.g. 'AAPL' -> '0000320193'.
     Source: https://www.sec.gov/files/company_tickers.json
@@ -54,19 +66,15 @@ def download_filing(cik: str, filing: dict, ticker: str) -> Path:
     URL format: https://www.sec.gov/Archives/edgar/data/{cik_without_leading_zeros}/
                 {accession_number_without_dashes}/{primary_document}
     Skip the download if the file already exists (saves hitting the SEC repeatedly)."""
+
     cik_without_leading_zeros = str(int(cik))
 
     accession_number_without_dashes = filing["accession_number"].replace("-", "")
 
     url = f"https://www.sec.gov/Archives/edgar/data/{cik_without_leading_zeros}/{accession_number_without_dashes}/{filing['primary_document']}"
 
-    html_path = Path(f"data/raw/{ticker}/{filing['filing_date']}.html")
-    if not html_path.exists():
-        html_path.parent.mkdir(parents=True, exist_ok=True)
-        response = requests.get(url)
-        response.raise_for_status()
-        html_path.write_text(response.text, encoding="utf-8")
-    return html_path
+    return save_text(ticker, filing, url)
+
 
 
 def extract_risk_factors(html_path: Path) -> str:
@@ -87,4 +95,9 @@ def extract_risk_factors(html_path: Path) -> str:
         raise ValueError(f"Could not find Item 1A in {html_path}")
     return text[start_index:end_index].strip()
 
-print(get_10k_filings(get_cik("AAPL")))
+
+cik = get_cik("AAPL")                         # 1. get Apple's CIK
+filing = get_10k_filings(cik)[0]              # 2. take the most recent 10-K from the list
+print(download_filing(cik, filing, "AAPL"))   # 3. download it and print where it saved
+
+
