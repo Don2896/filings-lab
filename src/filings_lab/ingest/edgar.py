@@ -96,8 +96,5 @@ def extract_risk_factors(html_path: Path) -> str:
     return text[start_index:end_index].strip()
 
 
-cik = get_cik("AAPL")                         # 1. get Apple's CIK
-filing = get_10k_filings(cik)[0]              # 2. take the most recent 10-K from the list
-print(download_filing(cik, filing, "AAPL"))   # 3. download it and print where it saved
 
 
