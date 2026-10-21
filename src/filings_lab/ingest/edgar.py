@@ -2,6 +2,12 @@ from pathlib import Path
 import requests
 import os
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
+import warnings
+from bs4 import XMLParsedAsHTMLWarning
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
+
 
 load_dotenv()                                   # reads your .env file
 HEADERS = {"User-Agent": os.getenv("SEC_USER_AGENT")}
@@ -17,11 +23,15 @@ def save_text(ticker, filing, url) -> Path:
         html_path.parent.mkdir(parents=True, exist_ok=True)
         response = requests.get(url, headers=HEADERS)
         response.raise_for_status()
+        if "Undeclared Automated Tool" in response.text:
+            raise RuntimeError("SEC blocked the request: check your User-Agent")
         html_path.write_text(response.text, encoding="utf-8")
         print(f'downloaded to {html_path}')
     else:
         print(f'already saved to {html_path}')
     return html_path
+
+
 
 def get_cik(ticker: str) -> str:
     """Return the 10-digit zero-padded CIK for a ticker, e.g. 'AAPL' -> '0000320193'.
@@ -34,6 +44,8 @@ def get_cik(ticker: str) -> str:
             return str(item["cik_str"]).zfill(10)
     raise ValueError(f'Ticker {ticker} not found')
     
+
+
 
 def get_10k_filings(cik: str, n: int = 2) -> list[dict]:
     """Return the n most recent 10-K filings as dicts with keys:
@@ -94,7 +106,5 @@ def extract_risk_factors(html_path: Path) -> str:
     if start_index == -1 or end_index == -1:
         raise ValueError(f"Could not find Item 1A in {html_path}")
     return text[start_index:end_index].strip()
-
-
 
 
