@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 import warnings
 from bs4 import XMLParsedAsHTMLWarning
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
-
+import re
 
 
 load_dotenv()                                   # reads your .env file
@@ -96,22 +96,28 @@ def html_to_text(html: Path) -> str:
     text = text.replace("\xa0", " ")
     return text
 
+
+FLAGS = re.IGNORECASE | re.MULTILINE
+START_PATTERN = re.compile(r"^\s*item\s*1a", FLAGS)
+END_PATTERN = re.compile(r"^\s*item\s*(1b|1c|2)\b", FLAGS)
+
+
 def extract_risk_factors(html_path: Path) -> str:
-    """Return the plain text of Item 1A (Risk Factors).
-    Strip HTML with BeautifulSoup, then take text between 'Item 1A' and 'Item 1B'
-    (fall back to 'Item 2' if 1B is missing)."""
-    from bs4 import BeautifulSoup
+    """Return the text of Item 1A (Risk Factors) from a saved 10-K.
+    Picks the longest span between an Item 1A heading and the next
+    Item 1B/1C/2 heading, which skips the table of contents."""
+    text = html_to_text(html_path)
+    best_start, best_end = 0, 0
 
-    html = html_path.read_text(encoding="utf-8")
-    soup = BeautifulSoup(html, "html.parser")
-    text = soup.get_text(separator="\n")
+    for start_match in START_PATTERN.finditer(text):
+        end_match = END_PATTERN.search(text, start_match.start())
+        if end_match is None:
+            continue
+        if end_match.start() - start_match.start() > best_end - best_start:
+            best_start, best_end = start_match.start(), end_match.start()
 
-    start_index = text.find("Item 1A")
-    end_index = text.find("Item 1B", start_index)
-    if end_index == -1:
-        end_index = text.find("Item 2", start_index)
-    if start_index == -1 or end_index == -1:
+    if best_end == 0:
         raise ValueError(f"Could not find Item 1A in {html_path}")
-    return text[start_index:end_index].strip()
+    return text[best_start:best_end].strip()
 
 
