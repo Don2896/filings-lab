@@ -87,7 +87,14 @@ def download_filing(cik: str, filing: dict, ticker: str) -> Path:
 
     return save_text(ticker, filing, url)
 
-
+def html_to_text(html: Path) -> str:
+    """Read a saved filing and return its plain text."""
+    html_path = html
+    html_text = html_path.read_text(encoding="utf-8")
+    soup = BeautifulSoup(html_text, "lxml")
+    text = soup.get_text(separator="\n")
+    text = text.replace("\xa0", " ")
+    return text
 
 def extract_risk_factors(html_path: Path) -> str:
     """Return the plain text of Item 1A (Risk Factors).
