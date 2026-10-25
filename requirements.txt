@@ -4,3 +4,5 @@ requests
 duckdb
 pandas
 pytest
+beautifulsoup4
+lxml

@@ -31,22 +31,17 @@ def save_text(ticker, filing, url) -> Path:
         print(f'already saved to {html_path}')
     return html_path
 
-
-
 def get_cik(ticker: str) -> str:
     """Return the 10-digit zero-padded CIK for a ticker, e.g. 'AAPL' -> '0000320193'.
     Source: https://www.sec.gov/files/company_tickers.json
     Raise ValueError if the ticker isn't found."""
 
-    cik = fetch_json("https://www.sec.gov/files/company_tickers.json")
-    for item in cik.values():
+    tickers = fetch_json("https://www.sec.gov/files/company_tickers.json")
+    for item in tickers.values():
         if item["ticker"].upper() == ticker.upper():
             return str(item["cik_str"]).zfill(10)
     raise ValueError(f'Ticker {ticker} not found')
     
-
-
-
 def get_10k_filings(cik: str, n: int = 2) -> list[dict]:
     """Return the n most recent 10-K filings as dicts with keys:
     accession_number, filing_date, primary_document.
@@ -119,5 +114,15 @@ def extract_risk_factors(html_path: Path) -> str:
     if best_end == 0:
         raise ValueError(f"Could not find Item 1A in {html_path}")
     return text[best_start:best_end].strip()
+
+
+if __name__ == "__main__":
+    for ticker in ["AAPL", "MSFT"]:
+        cik = get_cik(ticker)
+        path = download_filing(cik, get_10k_filings(cik)[0], ticker)
+        risks = extract_risk_factors(path)
+        print(ticker, len(risks))
+        print(risks[:200])
+
 
 

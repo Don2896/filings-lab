@@ -1,41 +1,50 @@
-# filings-lab
+# Filings Lab
 
-A data platform that ingests SEC filings and market data, extracts structured signals with an LLM, and serves an AI research agent and dashboard.
+A data platform that ingests SEC 10-K filings, uses an LLM to extract structured
+risk factors, and (in progress) serves an AI research agent on top.
 
-What it is: a data platform that pulls in companies’ official SEC filings (10-Ks) and market data, uses an LLM to extract structured information from the text, and puts an AI research agent and dashboard on top.
+**Status:** in progress. Ingestion and LLM extraction work; tools and agent are next.
 
-The pipeline:
+## What it does today
+1. **Ingest:** looks up a company on SEC EDGAR, finds its latest 10-Ks and downloads them (cached, with SEC-compliant headers and block-page detection).
+2. **Extract section:** cleans the HTML and isolates Item 1A (Risk Factors), skipping the table of contents and cross-references.
+3. **Extract risks with Claude:** returns a JSON list of risks, each with a category, title and one-sentence summary. Output is parsed and validated (exact keys, allowed categories) before saving, and results are cached so each filing is only sent to Claude once.
 
-Ingest: download filings from EDGAR. (This is where you are now.)
-Extract: Claude turns sections like Risk Factors into structured data.
-Store: save the results in a database.
-Tools and agent: Claude can fetch filings and query the data itself to answer questions like “What new risks did Apple add this year?”
-MCP server and dashboard: expose the data to other AI tools and show it visually.
-
-What it’s meant to achieve:
-
-For a user: analysts at funds read thousands of filings looking for changes in risk, guidance or tone. Filings Lab automates that reading and highlights what changed between years.
-For you: one portfolio project that shows data engineering, production LLM use and agents on real financial data. It’s relevant to AI engineering roles and the systematic funds you’re targeting, and it’s the place where every Track A topic gets applied for real.
-
-**Status:** in progress
-
-## Planned architecture
-
-1. **Ingest**: pull SEC filings and market data
-2. **Extract**: turn filings into structured signals with an LLM
-3. **Tools**: query functions over the extracted data
-4. **Agent**: AI research agent that uses the tools
-5. **MCP server**: expose the tools over the Model Context Protocol
-6. **Dashboard**: visualise signals and research output
-
+Example output (`data/processed/AAPL/2025-10-31.json`):
+```json
+{
+  "category": "geopolitical",
+  "title": "Tariffs and international trade restrictions",
+  "summary": "New U.S. tariffs, retaliatory measures and potential Section 232 semiconductor tariffs can raise costs, limit product availability and force costly supply chain restructuring."
+}
 ```
-ingest → extract → tools → agent → MCP server → dashboard
+
+## Architecture
+```
+EDGAR → ingest/edgar.py → extract/risk_factors.py → data/processed/*.json
+                                                  → tools → agent → MCP server (planned)
 ```
 
 ## Setup
+```bash
+git clone https://github.com/Don2896/filings-lab.git
+cd filings-lab
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # then add your SEC_USER_AGENT and ANTHROPIC_API_KEY
+```
 
-_TBD_
+## Usage
+```bash
+PYTHONPATH=src python -m filings_lab.extract.risk_factors
+```
 
 ## Roadmap
-
-_TBD_
+- [x] EDGAR ingestion with caching
+- [x] Item 1A extraction
+- [x] LLM risk extraction with validation
+- [ ] Year-over-year comparison of risks
+- [ ] Tool use: let Claude call the ingestion functions
+- [ ] Research agent
+- [ ] MCP server
+- [ ] Tests, Docker, demo
